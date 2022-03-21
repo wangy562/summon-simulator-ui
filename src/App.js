@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import WishOne from "./WishOne"
-import WishMulti from "./WishMulti"
+
 
 class App extends Component {
   constructor() {
@@ -16,12 +16,13 @@ class App extends Component {
     this.setState({ "pity": updatedPity.pity, "fs": updatedPity.fs, wishType: 1 });
   }
 
-  summonMulti = () => {
+  summonMulti = async () => {
     const curPity = this.state.pity;
     const curFs = this.state.fs;
-    const updatedPity = this.state.pity + 10;
-    const updatedFs = this.state.fs + 10;
-    this.setState({ "pity": updatedPity, "fs": updatedFs, wishType: 2 })
+    await this.getWishResultMulti(curPity, curFs);
+    const updatedPity = this.computePity(curPity, curFs);
+    this.setState({ "pity": updatedPity.pity, "fs": updatedPity.fs, wishType: 2 })
+    console.log(this.state)
   }
 
   getWishResultOne = async (pity, fs) => {
@@ -31,15 +32,23 @@ class App extends Component {
     this.setState({ isLoaded: true, wishResults: [resBody] });
   }
 
+  getWishResultMulti = async (pity, fs) => {
+    console.log("multi button pressed")
+    const baseUri = "https://summon-simulator-api.herokuapp.com/api/permBanner/";
+    const res = await fetch(`${baseUri}multi/?pity=${pity}&fs=${fs}`); 
+    const resBody = await res.json(); 
+    this.setState({ isLoaded: true, wishResults: resBody });
+  }
+
   computePity = (pity, fs) => {
     const wishResults = this.state.wishResults; 
+    console.log("compute pity logging")
     console.log(wishResults)
     let curPity = pity;
     let curFs = fs;
     for (const wishItemIndex in wishResults) {
       const wishItem = wishResults[wishItemIndex]; 
       const rarity = wishItem.rarity;
-      console.log(rarity);
       if (rarity === 5) {
         curPity = 0;
         curFs++; 
@@ -51,7 +60,7 @@ class App extends Component {
           curFs++;
       }
     }
-    console.log({ pity: curPity, fs: curFs })
+    console.log("current pity " + { pity: curPity, fs: curFs })
     return { pity: curPity, fs: curFs }
   }
 
@@ -59,14 +68,20 @@ class App extends Component {
     const wishType = this.state.wishType;
     if (wishType === 0) {
       return <tr></tr>; 
+    } else if (wishType === 1) {
+        return (<WishOne pity={this.state.pity} 
+                   fs={this.state.fs} 
+                   isLoaded={this.state.isLoaded}
+                   error={this.state.error} 
+                   wishItem={this.state.wishResults[0]}/>);
     } else {
-        return (wishType === 1 ? 
+        return (this.state.wishResults.map((wishItem) => {
           <WishOne pity={this.state.pity} 
                    fs={this.state.fs} 
                    isLoaded={this.state.isLoaded}
                    error={this.state.error} 
-                   wishItem={this.state.wishResults[0]}/> : 
-          <WishMulti pity={this.state.pity} fs={this.state.fs}/>);
+                   wishItem={wishItem}/>
+        }));
     }
   }
 
